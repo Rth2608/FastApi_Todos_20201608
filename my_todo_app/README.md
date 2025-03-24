@@ -1,4 +1,5 @@
 ## 실행 ##
+cd my_todo_app
 >uvicorn main:app --reload --port=0
 
 ## 프로젝트 구조 ##
