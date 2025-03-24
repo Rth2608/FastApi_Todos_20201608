@@ -9,11 +9,12 @@ app = FastAPI()
 # To-Do 항목 모델
 class TodoItem(BaseModel):
     id: int
-    student_id: str  # 학번
-    name: str  # 이름
+    student_id: str  # 제목
+    name: str  # 설명
     completed: bool = False
 
 TODO_FILE = "todo.json"
+
 
 def load_todos():
     if os.path.exists(TODO_FILE):
@@ -71,3 +72,9 @@ def read_root():
     with open("templates/index.html", "r", encoding="utf-8") as file:
         content = file.read()               # file.read()는 HTML 파일의 내용을 문자열로 읽어 content 변수에 저장
     return HTMLResponse(content=content)    # FastAPI의 HTMLResponse 객체를 사용하여 index.html의 내용을 HTTP 응답으로 반환하며 클라이언트(웹 브라우저)는 HTML을 받아 웹 페이지로 렌더링
+
+@app.get("/todos/student/{student_id}", response_model=list[TodoItem])
+def get_todos_by_student(student_id: str):
+    todos = load_todos()
+    student_todos = [todo for todo in todos if todo["student_id"] == student_id]
+    return student_todos
