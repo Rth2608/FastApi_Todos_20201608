@@ -1,6 +1,6 @@
 import os, json
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
@@ -97,3 +97,35 @@ async def login(request: Request, student_id: str = Form(...), name: str = Form(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/")
+
+@router.get("/withdraw")
+async def withdraw(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    student_id = user["student_id"]
+    name = user["name"]
+
+    login_file = "login_data/login.json"
+    try:
+        if os.path.exists(login_file):
+            with open(login_file, "r", encoding="utf-8") as f:
+                users = json.load(f)
+
+            users = [u for u in users if not (u["student_id"] == student_id and u["name"] == name)]
+
+            with open(login_file, "w", encoding="utf-8") as f:
+                json.dump(users, f, indent=4, ensure_ascii=False)
+
+        todo_path = f"todos/{student_id}_{name}.json"
+        if os.path.exists(todo_path):
+            os.remove(todo_path)
+
+        request.session.clear()
+
+        return RedirectResponse("/", status_code=302)
+
+    except Exception as e:
+        print(f"탈퇴 중 오류: {e}")
+        return JSONResponse(status_code=500, content={"error": "탈퇴 중 오류 발생"})
