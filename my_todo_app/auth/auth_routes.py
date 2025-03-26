@@ -32,7 +32,7 @@ def save_user(student_id, name):
         if u["student_id"] == student_id and u["name"] == name:
             return  # 중복 방지
     users.append({"student_id": student_id, "name": name})
-    os.makedirs("data", exist_ok=True)
+    os.makedirs("login_data", exist_ok=True)
     with open(LOGIN_FILE, "w", encoding="utf-8") as f:
         json.dump(users, f, indent=4, ensure_ascii=False)
 
@@ -46,28 +46,68 @@ async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
     user_info = await oauth.google.get("https://openidconnect.googleapis.com/v1/userinfo", token=token)
     user_info = user_info.json()
-    request.session["temp_user"] = user_info
-    return templates.TemplateResponse("register.html", {"request": request, "name": user_info["name"]})
+
+    google_id = user_info.get("sub") or user_info.get("id")
+
+    if not google_id:
+        return JSONResponse(status_code=400, content={"error": "구글 사용자 식별값이 없습니다."})
+
+    # 중복 가입 확인
+    login_file = "login_data/login.json"
+    if os.path.exists(login_file):
+        with open(login_file, "r", encoding="utf-8") as f:
+            users = json.load(f)
+        for user in users:
+            if user.get("id") == google_id:
+                return templates.TemplateResponse("register.html", {
+                    "request": request,
+                    "name": "사용자",
+                    "error": "이미 이 계정으로 가입된 사용자가 존재합니다."
+                })
+
+    # 세션에 구글 ID 저장
+    request.session["temp_user"] = {
+        "id": google_id
+    }
+
+    return templates.TemplateResponse("register.html", {"request": request})
+
 
 @router.post("/register/submit")
-async def register_submit(request: Request, student_id: str = Form(...)):
-    user_info = request.session.pop("temp_user", None)
-    if not user_info:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "name": "알 수 없음",
-            "error": "세션이 만료되었거나 잘못된 접근입니다. 다시 시도해주세요."
-        })
+async def register_submit(
+    request: Request,
+    student_id: str = Form(...),
+    name: str = Form(...)
+):
+    temp_user = request.session.pop("temp_user", None)
+    if not temp_user or "id" not in temp_user:
+        return RedirectResponse("/", status_code=302)
 
-    name = user_info.get("name")
-    if not name:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "name": "알 수 없음",
-            "error": "사용자 이름 정보를 불러올 수 없습니다."
-        })
+    google_id = temp_user["id"]
+    login_file = "login_data/login.json"
+    os.makedirs("login_data", exist_ok=True)
 
-    save_user(student_id, name)
+    users = []
+    if os.path.exists(login_file):
+        with open(login_file, "r", encoding="utf-8") as f:
+            users = json.load(f)
+
+        # 학번 중복 검사
+        for user in users:
+            if user["student_id"] == student_id:
+                return templates.TemplateResponse("register.html", {
+                    "request": request,
+                    "error": "이미 존재하는 학번입니다. 다른 학번으로 시도해주세요."
+                })
+
+    users.append({
+        "student_id": student_id,
+        "name": name,
+        "id": google_id
+    })
+
+    with open(login_file, "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=4, ensure_ascii=False)
 
     request.session["user"] = {
         "student_id": student_id,
@@ -75,6 +115,7 @@ async def register_submit(request: Request, student_id: str = Form(...)):
     }
 
     return RedirectResponse("/", status_code=302)
+
 
 
 @router.get("/login")

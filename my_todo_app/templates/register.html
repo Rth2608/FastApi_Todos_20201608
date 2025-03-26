@@ -1,9 +1,15 @@
 {% if error %}
-<p style="color: red;">{{ error }}</p>
+    <p style="color: red;">{{ error }}</p>
+    <form action="/" method="get">
+        <button type="submit">처음으로 돌아가기</button>
+    </form>
+{% else %}
+    <form action="/register/submit" method="post">
+        <h2>학번과 이름을 입력해주세요.</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input type="text" name="student_id" placeholder="학번 입력" required>
+            <input type="text" name="name" placeholder="이름 입력" required>
+        </div>
+        <button type="submit">가입 완료</button>
+    </form>
 {% endif %}
-
-<form action="/register/submit" method="post">
-    <h2>{{ name }}님, 학번을 입력해주세요.</h2>
-    <input type="text" name="student_id" placeholder="학번 입력" required>
-    <button type="submit">가입 완료</button>
-</form>
