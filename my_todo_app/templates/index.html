@@ -7,78 +7,126 @@
 </head>
 <body>
     {% if user %}
-        <h2>환영합니다, {{ user.name }} 님!</h2>
+        <h2>{{ user.student_id }} {{ user.name }} 님</h2>
+        <hr style="margin: 20px 0;">
+
+        <h2>계정 관리</h2>
         <a href="/logout"><button>로그아웃</button></a>
         <a href="/withdraw"><button>회원 탈퇴</button></a>
 
+        <hr style="margin: 20px 0;">
 
-        <h3>당신의 ToDo 리스트</h3>
-        <ul id="todo-list"></ul>
+    <div style="display: flex; gap: 40px; align-items: flex-start;">
+        <!-- 왼쪽: 입력 영역 -->
+        <div>
+            <h3>To-Do List 추가</h3>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="new-title" placeholder="제목 입력" style="margin-right: 10px;">
+                <input type="text" id="new-task" placeholder="할 일 입력">
+                <button onclick="addTodo()">추가</button>
+            </div>
+        </div>
+    
+        <!-- 오른쪽: 목록 영역 -->
+        <div>
+            <h3>To-Do 목록</h3>
+            <ul id="todo-list"></ul>
+        </div>
+    </div>
+    
 
-        <input type="text" id="new-todo" placeholder="할 일 추가">
-        <button onclick="addTodo()">추가</button>
-        <button onclick="saveTodos()">저장</button>
 
-        <script>
+    <script>
         let todos = [];
-
+        
         fetch("/api/todos", {
             method: "GET",
             credentials: "include"
         })
-        .then(res => {
-            if (!res.ok) throw new Error("ToDo 불러오기 실패");
-            return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
             todos = data;
             renderTodos();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("ToDo 데이터를 불러올 수 없습니다.");
         });
-
+        
         function renderTodos() {
             const list = document.getElementById("todo-list");
             list.innerHTML = "";
             todos.forEach((todo, index) => {
                 const li = document.createElement("li");
-                li.textContent = todo;
+        
+                // 수정 모드 체크
+                if (todo.editing) {
+                    li.innerHTML = `
+                        제목: <input type="text" id="edit-title-${index}" value="${todo.title}" style="margin-right: 10px;">
+                        할일: <input type="text" id="edit-task-${index}" value="${todo.task}">
+                        <button onclick="saveEdit(${index})">저장</button>
+                    `;
+                } else {
+                    li.innerHTML = `
+                        <strong>${todo.title}</strong>: ${todo.task}
+                        <button onclick="editTodo(${index})">수정</button>
+                        <button onclick="deleteTodo(${index})">삭제</button>
+                    `;
+                }
+        
                 list.appendChild(li);
             });
         }
-
+        
         function addTodo() {
-            const input = document.getElementById("new-todo");
-            const value = input.value.trim();
-            if (value) {
-                todos.push(value);
-                input.value = "";
+            const titleInput = document.getElementById("new-title");
+            const taskInput = document.getElementById("new-task");
+            const title = titleInput.value.trim();
+            const task = taskInput.value.trim();
+        
+            if (title && task) {
+                todos.push({ title, task });
+                titleInput.value = "";
+                taskInput.value = "";
                 renderTodos();
+                autoSaveTodos();
             }
         }
-
-        function saveTodos() {
+        
+        function deleteTodo(index) {
+            todos.splice(index, 1);
+            renderTodos();
+            autoSaveTodos();
+        }
+        
+        function editTodo(index) {
+            todos[index].editing = true;
+            renderTodos();
+        }
+        
+        function saveEdit(index) {
+            const newTitle = document.getElementById(`edit-title-${index}`).value.trim();
+            const newTask = document.getElementById(`edit-task-${index}`).value.trim();
+        
+            if (newTitle && newTask) {
+                todos[index] = {
+                    title: newTitle,
+                    task: newTask
+                };
+                renderTodos();
+                autoSaveTodos();
+            }
+        }
+        
+        function autoSaveTodos() {
+            // editing 속성 제거한 후 저장
+            const cleaned = todos.map(t => ({ title: t.title, task: t.task }));
             fetch("/api/todos", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify(todos)
-            })
-            .then(res => {
-                if (!res.ok) throw new Error("저장 실패");
-                return res.json();
-            })
-            .then(result => {
-                alert("저장되었습니다!");
-            })
-            .catch(err => {
-                console.error(err);
-                alert("저장에 실패했습니다.");
+                body: JSON.stringify(cleaned)
             });
         }
         </script>
+        
+        
 
     {% else %}
         <h1>로그인</h1>
