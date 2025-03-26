@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Request
+import os, json
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse
-from todolists.todo_service import get_todo_file
+from fastapi.templating import Jinja2Templates
 from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
-import os, json
 
 router = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
 config = Config(".env")
-
 oauth = OAuth(config)
 oauth.register(
     name='google',
@@ -18,42 +18,82 @@ oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-@router.get("/login")
-async def login(request: Request):
+LOGIN_FILE = "login_data/login.json"
+
+def load_users():
+    if not os.path.exists(LOGIN_FILE):
+        return []
+    with open(LOGIN_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_user(student_id, name):
+    users = load_users()
+    for u in users:
+        if u["student_id"] == student_id and u["name"] == name:
+            return  # 중복 방지
+    users.append({"student_id": student_id, "name": name})
+    os.makedirs("data", exist_ok=True)
+    with open(LOGIN_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=4, ensure_ascii=False)
+
+@router.get("/register")
+async def register(request: Request):
     redirect_uri = request.url_for("auth_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
-
 
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
     token = await oauth.google.authorize_access_token(request)
-    # user_info = await oauth.google.get("userinfo", token=token)
-    user_info = await oauth.google.get( "https://openidconnect.googleapis.com/v1/userinfo", token=token)
+    user_info = await oauth.google.get("https://openidconnect.googleapis.com/v1/userinfo", token=token)
     user_info = user_info.json()
+    request.session["temp_user"] = user_info
+    return templates.TemplateResponse("register.html", {"request": request, "name": user_info["name"]})
+
+@router.post("/register/submit")
+async def register_submit(request: Request, student_id: str = Form(...)):
+    user_info = request.session.pop("temp_user", None)
+    if not user_info:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "name": "알 수 없음",
+            "error": "세션이 만료되었거나 잘못된 접근입니다. 다시 시도해주세요."
+        })
+
+    name = user_info.get("name")
+    if not name:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "name": "알 수 없음",
+            "error": "사용자 이름 정보를 불러올 수 없습니다."
+        })
+
+    save_user(student_id, name)
 
     request.session["user"] = {
-        "name": user_info["name"]
+        "student_id": student_id,
+        "name": name
     }
-
-    # 사용자 전용 파일 생성
-    filepath = get_todo_file(request)
-    if not os.path.exists(filepath):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump([], f, indent=4, ensure_ascii=False)
 
     return RedirectResponse("/", status_code=302)
 
 
+@router.get("/login")
+async def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
-@router.get("/protected")
-async def protected(request: Request):
-    user = request.session.get('user')
-    if user:
-        return {"message": "로그인 성공", "user": user}
-    return RedirectResponse(url="/login")
+@router.post("/login")
+async def login(request: Request, student_id: str = Form(...), name: str = Form(...)):
+    users = load_users()
+    for user in users:
+        if user["student_id"] == student_id and user["name"] == name:
+            request.session["user"] = user
+            return RedirectResponse("/", status_code=302)
+    return templates.TemplateResponse("login.html", {
+        "request": request,
+        "error": "일치하는 사용자가 없습니다."
+    })
 
 @router.get("/logout")
 def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/")
+    return RedirectResponse("/")

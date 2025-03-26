@@ -20,7 +20,6 @@
         <script>
         let todos = [];
 
-        // 로그인한 사용자만 ToDo 불러오기
         fetch("/api/todos", {
             method: "GET",
             credentials: "include"
@@ -80,8 +79,17 @@
         </script>
 
     {% else %}
-        <h1>Google 로그인</h1>
-        <a href="/login"><button>Google로 로그인</button></a>
+        <h1>로그인</h1>
+        <form action="/login" method="get">
+            <button type="submit">학번 + 이름 로그인</button>
+        </form>
+
+        {% if is_local %}
+        <h2>회원가입 (로컬 전용)</h2>
+        <form action="/register" method="get">
+            <button type="submit">Google로 회원가입</button>
+        </form>
+        {% endif %}
     {% endif %}
 </body>
 </html>
