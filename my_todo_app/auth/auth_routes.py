@@ -32,7 +32,7 @@ async def auth_callback(request: Request):
     user_info = user_info.json()
 
     request.session["user"] = {
-        "email": user_info["email"]
+        "name": user_info["name"]
     }
 
     # 사용자 전용 파일 생성

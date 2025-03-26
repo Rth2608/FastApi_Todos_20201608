@@ -7,9 +7,9 @@ def get_todo_file(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="로그인이 필요합니다")
     
-    email = user["email"].replace("@", "_at_").replace(".", "_")
+    name = user["name"]
     os.makedirs("data", exist_ok=True)
-    return f"data/todo_{email}.json"
+    return f"data/todo_{name}.json"
 
 # 로그인한 사용자에 맞는 개인 To-Do 목록을 불러오는 함수
 def load_user_todos(request: Request):
