@@ -1,6 +1,7 @@
 ## 실행 ##
 cd my_todo_app
->uvicorn main:app --reload --port=0
+uvicorn main:app --reload --port 8080
+
 
 ## 프로젝트 구조 ##
 my_todo_app/
