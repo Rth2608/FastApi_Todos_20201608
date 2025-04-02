@@ -11,8 +11,8 @@
         <hr style="margin: 20px 0;">
 
         <h2>계정 관리</h2>
-        <a href="/logout"><button>로그아웃</button></a>
-        <a href="/withdraw"><button>회원 탈퇴</button></a>
+        <button onclick="confirmLogout()">로그아웃</button>
+        <button onclick="confirmWithdraw()">회원 탈퇴</button>
 
         <hr style="margin: 20px 0;">
 
@@ -123,6 +123,18 @@
                 credentials: "include",
                 body: JSON.stringify(cleaned)
             });
+        }
+        
+        function confirmLogout() {
+            if (confirm("정말 로그아웃 하시겠습니까?")) {
+                window.location.href = "/logout";
+            }
+        }
+
+      function confirmWithdraw() {
+            if (confirm("정말 회원 탈퇴하시겠습니까?\n되돌릴 수 없습니다.")) {
+                window.location.href = "/withdraw";
+            }
         }
         </script>
         
