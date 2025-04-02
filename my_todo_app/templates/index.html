@@ -143,13 +143,13 @@
     {% else %}
         <h1>로그인</h1>
         <form action="/login" method="get">
-            <button type="submit">학번 + 이름 로그인</button>
+            <button type="submit">로그인</button>
         </form>
 
         {% if is_local %}
         <h2>회원가입 (로컬 전용)</h2>
         <form action="/register" method="get">
-            <button type="submit">Google로 회원가입</button>
+            <button type="submit">Google계정 연동으로 회원가입</button>
         </form>
         {% endif %}
     {% endif %}

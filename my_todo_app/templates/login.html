@@ -1,7 +1,7 @@
 {% if error %}<p style="color:red;">{{ error }}</p>{% endif %}
 <form action="/login" method="post">
-    <h2>학번 + 이름으로 로그인</h2>
-    <input type="text" name="student_id" placeholder="학번" required>
+    <h2>로그인</h2>
+    <input type="text" name="student_id" placeholder="학번(아이디)" required>
     <input type="text" name="name" placeholder="이름" required>
     <button type="submit">로그인</button>
 </form>
