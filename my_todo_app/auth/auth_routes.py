@@ -1,4 +1,5 @@
 import os, json
+import bcrypt
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -29,16 +30,6 @@ def load_users():
         return []
     with open(LOGIN_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def save_user(student_id, name):
-    users = load_users()
-    for u in users:
-        if u["student_id"] == student_id and u["name"] == name:
-            return
-    users.append({"student_id": student_id, "name": name})
-    os.makedirs("login_data", exist_ok=True)
-    with open(LOGIN_FILE, "w", encoding="utf-8") as f:
-        json.dump(users, f, indent=4, ensure_ascii=False)
 
 if USE_GOOGLE_AUTH:
 
@@ -83,7 +74,8 @@ async def check_student_id(student_id: str):
 async def register_submit(
     request: Request,
     student_id: str = Form(...),
-    name: str = Form(...)
+    name: str = Form(...),
+    password: str = Form(...)
 ):
     temp_user = request.session.pop("temp_user", None)
     if not temp_user or "id" not in temp_user:
@@ -98,8 +90,14 @@ async def register_submit(
                 "request": request,
                 "error": "이미 존재하는 학번입니다. 다른 학번으로 시도해주세요."
             })
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-    users.append({"student_id": student_id, "name": name, "id": google_id})
+    users.append({
+        "student_id": student_id,
+        "name": name,
+        "id": google_id,
+        "password": hashed_password
+    })
 
     os.makedirs("login_data", exist_ok=True)
     with open(LOGIN_FILE, "w", encoding="utf-8") as f:
@@ -109,21 +107,30 @@ async def register_submit(
 
     return RedirectResponse("/", status_code=302)
 
+
 @router.get("/login")
 async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 @router.post("/login")
-async def login(request: Request, student_id: str = Form(...), name: str = Form(...)):
+async def login(request: Request, student_id: str = Form(...), password: str = Form(...)):
     users = load_users()
     for user in users:
-        if user["student_id"] == student_id and user["name"] == name:
-            request.session["user"] = user
-            return RedirectResponse("/", status_code=302)
+        if user["student_id"] == student_id:
+            if bcrypt.checkpw(password.encode('utf-8'), user["password"].encode('utf-8')):
+                request.session["user"] = user
+                return RedirectResponse("/", status_code=302)
+            else:
+                return templates.TemplateResponse("login.html", {
+                    "request": request,
+                    "error": "비밀번호가 틀렸습니다."
+                })
     return templates.TemplateResponse("login.html", {
         "request": request,
-        "error": "일치하는 사용자가 없습니다."
+        "error": "등록되지 않은 학번(아이디)입니다."
     })
+
+
 
 @router.get("/logout")
 def logout(request: Request):

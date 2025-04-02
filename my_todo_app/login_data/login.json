@@ -2,11 +2,7 @@
     {
         "student_id": "20201608",
         "name": "유태훈",
-        "id": "107992865467290518543"
-    },
-    {
-        "student_id": "20201607",
-        "name": "유수연",
-        "id": "101728435303120907753"
+        "id": "107992865467290518543",
+        "password": "$2b$12$L6WCIFFoMewlUuH00qC9UOG1JBcDbXonV3JrDlU/fdUHnJDAaQOCu"
     }
 ]
