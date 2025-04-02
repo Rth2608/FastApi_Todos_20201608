@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
   fastapi-app:
     build:
@@ -7,5 +5,4 @@ services:
       dockerfile: Dockerfile      # Dockerfile 이름 (생략 가능, 기본값은 'Dockerfile')
     container_name: FastApi-app
     ports:
-      - "5001:5001"
-      - "8000:8000"
+      - "9000:9000"

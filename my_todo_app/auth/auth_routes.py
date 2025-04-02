@@ -8,10 +8,11 @@ from starlette.config import Config
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
-USE_GOOGLE_AUTH = os.getenv("USE_GOOGLE_AUTH", "False").lower() == "true"
+config = Config(".env")
+
+USE_GOOGLE_AUTH = config("USE_GOOGLE_AUTH", cast=bool, default=False)
 
 if USE_GOOGLE_AUTH:
-    config = Config(".env")
     oauth = OAuth(config)
     oauth.register(
         name='google',
@@ -33,7 +34,7 @@ def save_user(student_id, name):
     users = load_users()
     for u in users:
         if u["student_id"] == student_id and u["name"] == name:
-            return  # 중복 방지
+            return
     users.append({"student_id": student_id, "name": name})
     os.makedirs("login_data", exist_ok=True)
     with open(LOGIN_FILE, "w", encoding="utf-8") as f:
@@ -57,7 +58,6 @@ if USE_GOOGLE_AUTH:
         if not google_id:
             return JSONResponse(status_code=400, content={"error": "구글 사용자 식별값이 없습니다."})
 
-        # 중복 가입 확인
         users = load_users()
         for user in users:
             if user.get("id") == google_id:
@@ -70,6 +70,14 @@ if USE_GOOGLE_AUTH:
         request.session["temp_user"] = {"id": google_id}
 
         return templates.TemplateResponse("register.html", {"request": request})
+
+@router.get("/check-student-id")
+async def check_student_id(student_id: str):
+    users = load_users()
+    for user in users:
+        if user["student_id"] == student_id:
+            return JSONResponse(content={"exists": True})
+    return JSONResponse(content={"exists": False})
 
 @router.post("/register/submit")
 async def register_submit(

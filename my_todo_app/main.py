@@ -8,10 +8,11 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY"))
 app.include_router(auth_router)
 app.include_router(todo_router)
 

@@ -4,12 +4,55 @@
         <button type="submit">처음으로 돌아가기</button>
     </form>
 {% else %}
-    <form action="/register/submit" method="post">
+    <form action="/register/submit" method="post" id="register_form">
         <h2>학번과 이름을 입력해주세요.</h2>
+
         <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <input type="text" name="student_id" placeholder="학번 입력" required>
+            <input type="text" id="student_id" name="student_id" placeholder="학번 입력" required>
+            <button type="button" onclick="checkStudentId()">중복 확인</button>
+        </div>
+
+        <div style="margin-bottom: 10px;">
             <input type="text" name="name" placeholder="이름 입력" required>
         </div>
-        <button type="submit">가입 완료</button>
+
+        <p id="check_result" style="margin-bottom: 10px;"></p>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" id="submit_btn" disabled>가입 완료</button>
+
+            <!-- ✅ 회원가입 취소 버튼: 조건 없이 홈으로 이동 -->
+            <a href="/" style="margin-left: 10px; text-decoration: none;">
+                <button type="submit">회원가입 취소</button>
+            </a>
+        </div>
     </form>
+
+    <script>
+        async function checkStudentId() {
+            const studentId = document.getElementById("student_id").value.trim();
+            const resultTag = document.getElementById("check_result");
+            const submitBtn = document.getElementById("submit_btn");
+
+            if (!studentId) {
+                resultTag.innerText = "학번을 입력해주세요.";
+                resultTag.style.color = "red";
+                submitBtn.disabled = true;
+                return;
+            }
+
+            const response = await fetch(`/check-student-id?student_id=${studentId}`);
+            const data = await response.json();
+
+            if (data.exists) {
+                resultTag.innerText = "❌ 이미 존재하는 학번입니다.";
+                resultTag.style.color = "red";
+                submitBtn.disabled = true;
+            } else {
+                resultTag.innerText = "✅ 사용 가능한 학번입니다.";
+                resultTag.style.color = "green";
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
 {% endif %}
