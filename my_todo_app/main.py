@@ -28,3 +28,6 @@ def read_root(request: Request):
         "user": user,
         "is_local": is_local
     })
+
+for route in app.routes:
+    print(route.path)
