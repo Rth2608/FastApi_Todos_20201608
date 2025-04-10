@@ -2,8 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
-from auth.auth_routes import router as auth_router
-from todolists.todo_routes import router as todo_router
+from my_todo_app.auth.auth_routes import router as auth_router
+from my_todo_app.todolists.todo_routes import router as todo_router
 import os
 from dotenv import load_dotenv
 
