@@ -26,3 +26,6 @@ itsdangerous
 httpx
 python-multipart
 bcrypt
+pytest
+pytest-html
+httpx
