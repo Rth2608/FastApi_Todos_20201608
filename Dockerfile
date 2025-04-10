@@ -8,4 +8,4 @@ ENV PYTHONPATH=/app
 
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-CMD ["uvicorn", "my_todo_app.main:app", "--host", "0.0.0.0", "--port", "9000", "--reload"]
+CMD ["uvicorn", "my_todo_app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
