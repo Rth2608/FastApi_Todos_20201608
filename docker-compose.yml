@@ -1,8 +1,12 @@
 services:
   fastapi-app:
     build:
-      context: ./my_todo_app     # Dockerfile이 위치한 디렉토리 경로
-      dockerfile: Dockerfile      # Dockerfile 이름 (생략 가능, 기본값은 'Dockerfile')
-    container_name: FastApi-app
+      context: ./my_todo_app
     ports:
       - "9000:9000"
+    volumes:
+      - ./my_todo_app:/app
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app       # 👈 여기가 핵심!
+    command: uvicorn main:app --host 0.0.0.0 --port 9000 --reload
