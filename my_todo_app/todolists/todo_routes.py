@@ -8,7 +8,7 @@ def get_user_file(user):
     os.makedirs("todos", exist_ok=True)
     return f"todos/{user['student_id']}_{user['name']}.json"
 
-@router.get("/api/todos")
+@router.get("/todos")
 async def get_todos(request: Request):
     user = request.session.get("user")
     if not user:
@@ -16,13 +16,13 @@ async def get_todos(request: Request):
 
     filepath = get_user_file(user)
     if not os.path.exists(filepath):
-        return JSONResponse(content=[])  # 빈 리스트 반환
+        return JSONResponse(content=[])
 
     with open(filepath, "r", encoding="utf-8") as f:
         todos = json.load(f)
     return JSONResponse(content=todos)
 
-@router.post("/api/todos")
+@router.post("/todos")
 async def save_todos(request: Request):
     user = request.session.get("user")
     if not user:
