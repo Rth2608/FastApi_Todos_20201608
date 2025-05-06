@@ -11,7 +11,7 @@ services:
       - PYTHONPATH=/app
     command: uvicorn my_todo_app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  sonarqube:  # ✅ 들여쓰기 수정됨
+  sonarqube:
     image: sonarqube:latest
     container_name: sonarqube
     ports:
