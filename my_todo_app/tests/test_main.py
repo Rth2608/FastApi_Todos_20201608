@@ -89,8 +89,25 @@ def test_register_existing_student_id():
     )
 
 
+def test_register_submit_without_temp_user():
+    data = {
+        "student_id": "12345678",
+        "name": "홍길동",
+        "password": "ValidPass123!",
+    }
+    response = client.post("/register/submit", data=data, follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/"
+
+
 def test_logout_redirect():
     setup_user_session()
+    response = client.get("/logout", follow_redirects=False)
+    assert response.status_code in [302, 307]
+    assert response.headers["location"] == "/"
+
+
+def test_logout_without_login():
     response = client.get("/logout", follow_redirects=False)
     assert response.status_code in [302, 307]
     assert response.headers["location"] == "/"
@@ -102,6 +119,13 @@ def test_withdraw_success():
     with open("login_data/login.json", "w", encoding="utf-8") as f:
         json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
 
+    response = client.get("/withdraw", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/"
+
+
+def test_withdraw_without_login():
+    client.get("/logout")
     response = client.get("/withdraw", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "/"
@@ -150,12 +174,9 @@ def test_register_page_sets_temp_user():
 
 
 def test_register_template_rendered_directly():
-    """
-    구글 인증 미사용 조건 하에서 /auth/callback 없이 REGISTER_TEMPLATE 직접 렌더링되는지 확인
-    """
-    from my_todo_app.routes import load_users
+    from my_todo_app.routes.auth import load_users
 
-    client.get("/test/set-temp-user")  # 세션 설정 보장
+    client.get("/test/set-temp-user")
     users = load_users()
     users.append(
         {
@@ -169,7 +190,15 @@ def test_register_template_rendered_directly():
     with open("login_data/login.json", "w", encoding="utf-8") as f:
         json.dump(users, f, indent=4, ensure_ascii=False)
 
-    # 테스트용 request 없이 직접 템플릿 호출되는 경로
     response = client.get("/register")
     assert response.status_code == 200
     assert "회원가입" in response.text
+
+
+def test_load_users_returns_empty_when_file_missing():
+    if os.path.exists("login_data/login.json"):
+        os.remove("login_data/login.json")
+    from my_todo_app.routes.auth import load_users
+
+    users = load_users()
+    assert users == []
