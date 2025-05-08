@@ -220,3 +220,9 @@ async def withdraw(request: Request):
 async def set_login_user(request: Request):
     request.session["user"] = TEST_USER
     return JSONResponse(content={"ok": True})
+
+
+@router.get("/test/set-temp-user")
+async def set_temp_user(request: Request):
+    request.session["temp_user"] = {"id": "test_google_id"}
+    return JSONResponse(content={"ok": True})
