@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from my_todo_app.main import app
 from my_todo_app.test_config import TEST_USER, WRONG_PASSWORD
 import os, json
+from bs4 import BeautifulSoup
 
 client = TestClient(app)
 
@@ -63,6 +64,25 @@ def test_register_submit_redirect():
     }
     response = client.post("/register/submit", data=data, follow_redirects=False)
     assert response.status_code == 302
+
+
+def test_register_existing_student_id():
+    os.makedirs("login_data", exist_ok=True)
+    with open("login_data/login.json", "w", encoding="utf-8") as f:
+        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
+
+    client.get("/test/set-temp-user")
+    data = {
+        "student_id": TEST_USER["student_id"],
+        "name": TEST_USER["name"],
+        "password": TEST_USER["password"],
+    }
+    response = client.post("/register/submit", data=data)
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    text = soup.get_text()
+    assert "이미 존재하는 학번입니다" in text or "다른 학번으로 시도해주세요" in text
 
 
 def test_logout_redirect():
