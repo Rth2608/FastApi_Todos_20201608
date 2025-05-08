@@ -30,3 +30,4 @@ pytest
 pytest-html
 httpx
 pytest-cov
+beautifulsoup4
