@@ -3,6 +3,7 @@ from my_todo_app.main import app
 from my_todo_app.test_config import TEST_USER, WRONG_PASSWORD
 import os, json
 from bs4 import BeautifulSoup
+import pytest
 
 client = TestClient(app)
 
@@ -186,3 +187,36 @@ def test_check_student_id_not_exists():
     response = client.get("/check-student-id?student_id=notexist123")
     assert response.status_code == 200
     assert response.json()["exists"] is False
+
+
+def test_get_register_page_without_temp_user():
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "회원가입" in response.text or "Register" in response.text
+
+
+def test_auth_callback_direct_access_without_oauth(monkeypatch):
+    monkeypatch.setenv("USE_GOOGLE_AUTH", "false")
+    response = client.get("/auth/callback", follow_redirects=False)
+    assert response.status_code in [400, 422, 500]
+
+
+def test_withdraw_file_delete_fail(monkeypatch):
+    setup_user_session()
+    os.makedirs("login_data", exist_ok=True)
+    with open("login_data/login.json", "w", encoding="utf-8") as f:
+        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
+
+    monkeypatch.setattr(
+        os, "remove", lambda path: (_ for _ in ()).throw(OSError("삭제 오류"))
+    )
+
+    response = client.get("/withdraw")
+    assert response.status_code == 500
+    assert "탈퇴 중 오류 발생" in response.text or response.json().get("error")
+
+
+def test_set_temp_user():
+    response = client.get("/test/set-temp-user")
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
