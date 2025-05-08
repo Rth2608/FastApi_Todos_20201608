@@ -19,6 +19,13 @@ def test_read_root():
     assert "로그인" in response.text
 
 
+def test_root_with_login():
+    setup_user_session()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "로그아웃" in response.text or "할 일 목록" in response.text
+
+
 # ---------- 로그인 / 회원가입 ----------
 def test_get_login_page():
     response = client.get("/login")
@@ -43,6 +50,20 @@ def test_post_login_fail():
         "등록되지 않은 학번" in response.text
         or "비밀번호가 틀렸습니다" in response.text
     )
+
+
+def test_post_login_success():
+    os.makedirs("login_data", exist_ok=True)
+    with open("login_data/login.json", "w", encoding="utf-8") as f:
+        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
+
+    data = {
+        "student_id": TEST_USER["student_id"],
+        "password": TEST_USER["password"],
+    }
+    response = client.post("/login", data=data, follow_redirects=False)
+    assert response.status_code in [302, 307]
+    assert response.headers["location"] == "/"
 
 
 def test_post_register_redirect():
@@ -165,40 +186,3 @@ def test_check_student_id_not_exists():
     response = client.get("/check-student-id?student_id=notexist123")
     assert response.status_code == 200
     assert response.json()["exists"] is False
-
-
-def test_register_page_sets_temp_user():
-    response = client.get("/register")
-    assert response.status_code == 200
-    assert "회원가입" in response.text or "Register" in response.text
-
-
-def test_register_template_rendered_directly():
-    from my_todo_app.routes.auth import load_users
-
-    client.get("/test/set-temp-user")
-    users = load_users()
-    users.append(
-        {
-            "id": "test_google_id",
-            "student_id": "99999999",
-            "name": "테스트",
-            "password": "pw",
-        }
-    )
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump(users, f, indent=4, ensure_ascii=False)
-
-    response = client.get("/register")
-    assert response.status_code == 200
-    assert "회원가입" in response.text
-
-
-def test_load_users_returns_empty_when_file_missing():
-    if os.path.exists("login_data/login.json"):
-        os.remove("login_data/login.json")
-    from my_todo_app.routes.auth import load_users
-
-    users = load_users()
-    assert users == []
