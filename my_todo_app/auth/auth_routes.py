@@ -119,6 +119,7 @@ async def register_submit(
                 request,
                 REGISTER_TEMPLATE,  # ✅ 수정 완료
                 {
+                    "request": request,
                     "error": "이미 존재하는 학번입니다. 다른 학번으로 시도해주세요.",
                 },
             )
