@@ -82,7 +82,11 @@ def test_register_existing_student_id():
 
     soup = BeautifulSoup(response.text, "html.parser")
     text = soup.get_text()
-    assert "이미 존재하는 학번입니다" in text or "다른 학번으로 시도해주세요" in text
+    assert (
+        "이미 존재하는 학번입니다" in text
+        or "다른 학번으로 시도해주세요" in text
+        or "❌ 이미 존재하는 학번입니다." in text
+    )
 
 
 def test_logout_redirect():
@@ -137,3 +141,35 @@ def test_check_student_id_not_exists():
     response = client.get("/check-student-id?student_id=notexist123")
     assert response.status_code == 200
     assert response.json()["exists"] is False
+
+
+def test_register_page_sets_temp_user():
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "회원가입" in response.text or "Register" in response.text
+
+
+def test_register_template_rendered_directly():
+    """
+    구글 인증 미사용 조건 하에서 /auth/callback 없이 REGISTER_TEMPLATE 직접 렌더링되는지 확인
+    """
+    from my_todo_app.routes import load_users
+
+    client.get("/test/set-temp-user")  # 세션 설정 보장
+    users = load_users()
+    users.append(
+        {
+            "id": "test_google_id",
+            "student_id": "99999999",
+            "name": "테스트",
+            "password": "pw",
+        }
+    )
+    os.makedirs("login_data", exist_ok=True)
+    with open("login_data/login.json", "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=4, ensure_ascii=False)
+
+    # 테스트용 request 없이 직접 템플릿 호출되는 경로
+    response = client.get("/register")
+    assert response.status_code == 200
+    assert "회원가입" in response.text
