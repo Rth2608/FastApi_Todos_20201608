@@ -7,8 +7,7 @@ from my_todo_app.todolists.todo_routes import router as todo_router
 import os
 from prometheus_fastapi_instrumentator import Instrumentator
 
-# Prometheus 메트릭스 엔드포인트 (/metrics)
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 # templates 디렉토리 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
@@ -16,7 +15,8 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 # FastAPI 앱 생성
 app = FastAPI()
-
+# Prometheus 메트릭스 엔드포인트 (/metrics)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 # 세션 미들웨어 추가
 app.add_middleware(
     SessionMiddleware, secret_key=os.getenv("SESSION_SECRET_KEY", "dev-secret-key")
