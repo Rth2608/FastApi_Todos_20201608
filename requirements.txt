@@ -31,3 +31,5 @@ pytest-html
 httpx
 pytest-cov
 beautifulsoup4
+prometheus-fastapi-instrumentator
+prometheus-client
