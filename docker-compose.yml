@@ -49,6 +49,20 @@ services:
     container_name: node-exporter
     ports:
       - "8970:9100"  # 내부 9100 → 외부 8970
+   
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    command:
+      - "--prometheus_endpoint=/metrics"
+    restart: unless-stopped
 
 volumes:
   sonarqube_conf:
