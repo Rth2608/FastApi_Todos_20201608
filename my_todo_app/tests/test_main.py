@@ -1,209 +1,125 @@
 import os
 import json
-import pytest
+import uuid
+import sys
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from bs4 import BeautifulSoup
-from my_todo_app.main import app
-from my_todo_app.test_config import TEST_USER, WRONG_PASSWORD
+from starlette.middleware.sessions import SessionMiddleware
+
+# sys.path에 프로젝트 루트 추가
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+from my_todo_app.auth.auth_routes import router as auth_router
+from my_todo_app.todolists.todo_routes import router as todo_router
+
+app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key="test-secret")
+app.include_router(auth_router)
+app.include_router(todo_router, prefix="/api")
 
 client = TestClient(app)
 
-
-@pytest.fixture(scope="session", autouse=True)
-def set_test_env():
-    os.environ["ENV"] = "test"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+LOGIN_FILE = os.path.join(BASE_DIR, "login_data", "login.json")
 
 
-# ---------- 공통 유틸 ----------
-def setup_user_session():
-    client.get("/test/set-login-user")
+def clear_login_file():
+    os.makedirs(os.path.dirname(LOGIN_FILE), exist_ok=True)
+    if os.path.exists(LOGIN_FILE):
+        os.remove(LOGIN_FILE)
+    with open(LOGIN_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f)
 
 
-# ---------- 루트 페이지 ----------
-def test_read_root():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "로그인" in response.text
+def generate_user():
+    sid = f"test_{uuid.uuid4().hex[:6]}"
+    return {"student_id": sid, "name": "홍길동", "password": "pw1234"}
 
 
-def test_root_with_login():
-    setup_user_session()
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "로그아웃" in response.text or "할 일 목록" in response.text
-
-
-# ---------- 로그인 / 회원가입 ----------
-def test_get_login_page():
-    response = client.get("/login")
-    assert response.status_code == 200
-    assert "로그인" in response.text
-
-
-def test_get_register_page():
-    response = client.get("/register")
-    assert response.status_code == 200
-    assert "회원가입" in response.text
-
-
-def test_post_login_fail():
-    data = {"student_id": "wronguser", "password": WRONG_PASSWORD}
-    response = client.post("/login", data=data)
-    assert response.status_code == 200
-    assert (
-        "등록되지 않은 학번" in response.text
-        or "비밀번호가 틀렸습니다" in response.text
+def test_auth_and_todo_flow():
+    clear_login_file()
+    TEST_USER = generate_user()
+    TODO_FILE = os.path.join(
+        BASE_DIR, f"todos/{TEST_USER['student_id']}_{TEST_USER['name']}.json"
     )
+    if os.path.exists(TODO_FILE):
+        os.remove(TODO_FILE)
 
+    # 1. 학번 중복 없음
+    res = client.get(f"/check-student-id?student_id={TEST_USER['student_id']}")
+    assert res.status_code == 200
+    assert res.json() == {"exists": False}
 
-def test_post_login_success():
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
+    # 2. 회원가입
+    res = client.post("/register/submit", data=TEST_USER, follow_redirects=False)
+    assert res.status_code == 302
 
-    data = {"student_id": TEST_USER["student_id"], "password": "mypassword"}
-    response = client.post("/login", data=data, follow_redirects=True)
-    assert response.status_code == 200
-    assert "로그아웃" in response.text
+    # 3. 중복 학번 확인
+    res = client.get(f"/check-student-id?student_id={TEST_USER['student_id']}")
+    assert res.status_code == 200
+    assert res.json() == {"exists": True}
 
-
-def test_post_register_redirect():
-    client.get("/test/set-temp-user")
-    data = {"student_id": "99999999", "name": "테스트학생", "password": "mypassword"}
-    response = client.post("/register/submit", data=data, follow_redirects=False)
-    assert response.status_code == 302
-
-
-def test_register_submit_redirect():
-    data = {"student_id": "20231234", "name": "테스트학생", "password": "mypassword"}
-    response = client.post("/register/submit", data=data, follow_redirects=False)
-    assert response.status_code == 302
-
-
-def test_register_existing_student_id():
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
-
-    client.get("/test/set-temp-user")
-    data = {
-        "student_id": TEST_USER["student_id"],
-        "name": TEST_USER["name"],
-        "password": "mypassword",
-    }
-    response = client.post("/register/submit", data=data)
-    assert response.status_code == 200
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    text = soup.get_text()
-    assert (
-        "이미 존재하는 학번" in text
-        or "다른 학번으로 시도해주세요" in text
-        or "❌ 이미 존재하는 학번입니다." in text
+    # 4. 잘못된 비밀번호 로그인
+    res = client.post(
+        "/login",
+        data={"student_id": TEST_USER["student_id"], "password": "wrongpw"},
+        follow_redirects=False,
     )
+    assert res.status_code == 200
+    assert "비밀번호가 틀렸습니다" in res.text
 
-
-def test_register_submit_without_temp_user():
-    data = {"student_id": "12345678", "name": "홍길동", "password": "ValidPass123!"}
-    response = client.post("/register/submit", data=data, follow_redirects=False)
-    assert response.status_code == 302
-    assert response.headers["location"] == "/"
-
-
-def test_logout_redirect():
-    setup_user_session()
-    response = client.get("/logout", follow_redirects=False)
-    assert response.status_code in [302, 307]
-    assert response.headers["location"] == "/"
-
-
-def test_logout_without_login():
-    response = client.get("/logout", follow_redirects=False)
-    assert response.status_code in [302, 307]
-    assert response.headers["location"] == "/"
-
-
-def test_withdraw_success():
-    setup_user_session()
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
-
-    response = client.get("/withdraw", follow_redirects=False)
-    assert response.status_code == 302
-    assert response.headers["location"] == "/"
-
-
-def test_withdraw_without_login():
-    client.get("/logout")
-    response = client.get("/withdraw", follow_redirects=False)
-    assert response.status_code == 302
-    assert response.headers["location"] == "/"
-
-
-# ---------- 할 일 ----------
-def test_get_todos():
-    setup_user_session()
-    response = client.get("/api/todos")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-
-
-def test_save_todos():
-    setup_user_session()
-    new_todos = [
-        {"id": 1, "task": "테스트 할 일 1"},
-        {"id": 2, "task": "테스트 할 일 2"},
-    ]
-    response = client.post("/api/todos", json=new_todos)
-    assert response.status_code == 200
-    assert response.json().get("message") == "저장 완료"
-
-
-# ---------- 추가 테스트 ----------
-def test_check_student_id_exists():
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
-
-    response = client.get(f"/check-student-id?student_id={TEST_USER['student_id']}")
-    assert response.status_code == 200
-    assert response.json()["exists"] is True
-
-
-def test_check_student_id_not_exists():
-    response = client.get("/check-student-id?student_id=notexist123")
-    assert response.status_code == 200
-    assert response.json()["exists"] is False
-
-
-def test_get_register_page_without_temp_user():
-    response = client.get("/register")
-    assert response.status_code == 200
-    assert "회원가입" in response.text
-
-
-def test_auth_callback_direct_access_without_oauth(monkeypatch):
-    monkeypatch.setenv("ENV", "test")
-    response = client.get("/auth/callback", follow_redirects=False)
-    assert response.status_code in [400, 422, 404]
-
-
-def test_withdraw_file_delete_fail(monkeypatch):
-    setup_user_session()
-    os.makedirs("login_data", exist_ok=True)
-    with open("login_data/login.json", "w", encoding="utf-8") as f:
-        json.dump([TEST_USER], f, indent=4, ensure_ascii=False)
-
-    monkeypatch.setattr(
-        os, "remove", lambda path: (_ for _ in ()).throw(OSError("삭제 오류"))
+    # 5. 존재하지 않는 학번 로그인
+    res = client.post(
+        "/login",
+        data={"student_id": "nonexistent", "password": "1234"},
+        follow_redirects=False,
     )
-    response = client.get("/withdraw")
-    assert response.status_code == 500
-    assert "탈퇴 중 오류 발생" in response.text or response.json().get("error")
+    assert res.status_code == 200
+    assert "등록되지 않은 학번입니다" in res.text
 
+    # 6. 로그인 성공
+    res = client.post(
+        "/login",
+        data={"student_id": TEST_USER["student_id"], "password": TEST_USER["password"]},
+        follow_redirects=False,
+    )
+    assert res.status_code == 302
+    cookies = res.cookies
 
-def test_set_temp_user():
-    response = client.get("/test/set-temp-user")
-    assert response.status_code == 200
-    assert response.json()["ok"] is True
+    # 7. ToDo 빈 조회
+    res = client.get("/api/todos", cookies=cookies)
+    assert res.status_code == 200
+    assert res.json() == []
+
+    # 8. ToDo 저장
+    todo_data = [{"title": "과제", "task": "수학", "timestamp": "2025-01-01T00:00:00"}]
+    res = client.post("/api/todos", json=todo_data, cookies=cookies)
+    assert res.status_code == 200
+    assert res.json()["message"] == "저장 완료"
+
+    # 9. 저장된 ToDo 조회
+    res = client.get("/api/todos", cookies=cookies)
+    assert res.status_code == 200
+    assert res.json() == todo_data
+
+    # 10. 로그아웃
+    res = client.get("/logout", cookies=cookies, follow_redirects=False)
+    assert res.status_code in (302, 307)
+
+    # 11. 로그아웃 후 접근 차단
+    res = client.get("/api/todos")
+    assert res.status_code == 401
+
+    # 12. 인증 없이 탈퇴 → redirect
+    res = client.get("/withdraw", follow_redirects=False)
+    assert res.status_code == 302
+
+    # 13. 재로그인 후 탈퇴
+    res = client.post(
+        "/login",
+        data={"student_id": TEST_USER["student_id"], "password": TEST_USER["password"]},
+        follow_redirects=False,
+    )
+    cookies = res.cookies
+    res = client.get("/withdraw", cookies=cookies, follow_redirects=False)
+    assert res.status_code == 302

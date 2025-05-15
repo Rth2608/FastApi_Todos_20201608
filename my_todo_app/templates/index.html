@@ -57,7 +57,7 @@
       function renderTodos() {
         const sortOption = document.getElementById("sort-select").value;
 
-        const sortedTodos = [...todos]; // 복사해서 정렬
+        const sortedTodos = [...todos];
         if (sortOption === "latest") {
           sortedTodos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         } else if (sortOption === "oldest") {
@@ -101,7 +101,7 @@
 
         if (title && task) {
           const now = new Date();
-          const timestamp = now.toISOString(); // 정렬을 위해 ISO 포맷으로 저장
+          const timestamp = now.toISOString();
 
           todos.push({ title, task, timestamp });
           titleInput.value = "";
@@ -171,12 +171,10 @@
       <button type="submit">로그인</button>
     </form>
 
-    {% if is_local %}
-    <h2>회원가입 (로컬 전용)</h2>
+    <h2>회원가입</h2>
     <form action="/register" method="get">
-      <button type="submit">Google계정 연동으로 회원가입</button>
+      <button type="submit">회원가입</button>
     </form>
-    {% endif %}
   {% endif %}
 </body>
 </html>

@@ -1,30 +1,38 @@
-<!-- register.html -->
-{% if error %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입</title>
+</head>
+<body>
+  {% if error %}
     <p style="color: red;">{{ error }}</p>
-{% endif %}
+  {% endif %}
 
-<form action="/register/submit" method="post" id="register_form">
+  <form action="/register/submit" method="post" id="register_form" autocomplete="off">
     <h2>학번, 이름, 비밀번호를 입력해주세요.</h2>
 
     <!-- 학번 입력 + 중복 확인 -->
     <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <input type="text" id="student_id" name="student_id" placeholder="학번 입력" required>
-        <button type="button" onclick="checkStudentId()">중복 확인</button>
+      <input type="text" id="student_id" name="student_id" placeholder="학번 입력" required autocomplete="off">
+      <button type="button" onclick="checkStudentId()">중복 확인</button>
     </div>
 
     <!-- 이름 입력 -->
     <div style="margin-bottom: 10px;">
-        <input type="text" name="name" placeholder="이름 입력" required>
+      <input type="text" name="name" placeholder="이름 입력" required autocomplete="off">
     </div>
 
     <!-- 비밀번호 입력 -->
     <div style="margin-bottom: 10px;">
-        <input type="password" id="password" name="password" placeholder="비밀번호 입력" required oninput="checkPasswordComplexity(); checkPasswordMatch();">
+      <input type="password" id="password" name="password" placeholder="비밀번호 입력" required
+             oninput="checkPasswordComplexity(); checkPasswordMatch();" autocomplete="new-password">
     </div>
 
     <!-- 비밀번호 재입력 -->
     <div style="margin-bottom: 10px;">
-        <input type="password" id="confirm_password" placeholder="비밀번호 재입력" required oninput="checkPasswordMatch()">
+      <input type="password" id="confirm_password" placeholder="비밀번호 재입력" required
+             oninput="checkPasswordMatch()" autocomplete="new-password">
     </div>
 
     <!-- 결과 메시지 -->
@@ -34,83 +42,85 @@
 
     <!-- 가입/취소 버튼 -->
     <div style="display: flex; gap: 10px;">
-        <button type="submit" id="submit_btn" disabled>가입 완료</button>
-        <a href="/" style="margin-left: 10px; text-decoration: none;">
-            <button type="submit">회원가입 취소</button>
-        </a>
+      <button type="submit" id="submit_btn" disabled>가입 완료</button>
+      <a href="/" style="margin-left: 10px; text-decoration: none;">
+        <button type="button">회원가입 취소</button>
+      </a>
     </div>
-</form>
+  </form>
 
-<script>
+  <script>
     async function checkStudentId() {
-        const studentId = document.getElementById("student_id").value.trim();
-        const resultTag = document.getElementById("check_result");
+      const studentId = document.getElementById("student_id").value.trim();
+      const resultTag = document.getElementById("check_result");
 
-        if (!studentId) {
-            resultTag.innerText = "학번을 입력해주세요.";
-            resultTag.style.color = "red";
-            document.getElementById("submit_btn").disabled = true;
-            return;
-        }
+      if (!studentId) {
+        resultTag.innerText = "학번을 입력해주세요.";
+        resultTag.style.color = "red";
+        document.getElementById("submit_btn").disabled = true;
+        return;
+      }
 
-        const response = await fetch(`/check-student-id?student_id=${studentId}`);
-        const data = await response.json();
+      const response = await fetch(`/check-student-id?student_id=${studentId}`);
+      const data = await response.json();
 
-        if (data.exists) {
-            resultTag.innerText = "❌ 이미 존재하는 학번입니다.";
-            resultTag.style.color = "red";
-            document.getElementById("submit_btn").disabled = true;
-        } else {
-            resultTag.innerText = "✅ 사용 가능한 학번입니다.";
-            resultTag.style.color = "green";
-            checkFormValidity();
-        }
+      if (data.exists) {
+        resultTag.innerText = "❌ 이미 존재하는 학번입니다.";
+        resultTag.style.color = "red";
+        document.getElementById("submit_btn").disabled = true;
+      } else {
+        resultTag.innerText = "✅ 사용 가능한 학번입니다.";
+        resultTag.style.color = "green";
+        checkFormValidity();
+      }
     }
 
     function checkPasswordComplexity() {
-        const password = document.getElementById("password").value;
-        const result = document.getElementById("password_complexity_result");
+      const password = document.getElementById("password").value;
+      const result = document.getElementById("password_complexity_result");
 
-        const lengthCheck = password.length >= 8;
-        const upperCheck = /[A-Z]/.test(password);
-        const lowerCheck = /[a-z]/.test(password);
-        const numberCheck = /\d/.test(password);
-        const specialCheck = /[!@#$%^&*]/.test(password);
+      const lengthCheck = password.length >= 8;
+      const upperCheck = /[A-Z]/.test(password);
+      const lowerCheck = /[a-z]/.test(password);
+      const numberCheck = /\d/.test(password);
+      const specialCheck = /[!@#$%^&*]/.test(password);
 
-        if (lengthCheck && upperCheck && lowerCheck && numberCheck && specialCheck) {
-            result.innerText = "✅ 비밀번호가 복잡성 기준을 충족합니다.";
-            result.style.color = "green";
-        } else {
-            result.innerText = "❌ 비밀번호는 8자 이상, 대/소문자, 숫자, 특수문자를 포함해야 합니다.";
-            result.style.color = "red";
-        }
-        checkFormValidity();
+      if (lengthCheck && upperCheck && lowerCheck && numberCheck && specialCheck) {
+        result.innerText = "✅ 비밀번호가 복잡성 기준을 충족합니다.";
+        result.style.color = "green";
+      } else {
+        result.innerText = "❌ 비밀번호는 8자 이상, 대/소문자, 숫자, 특수문자를 포함해야 합니다.";
+        result.style.color = "red";
+      }
+      checkFormValidity();
     }
 
     function checkPasswordMatch() {
-        const password = document.getElementById("password").value;
-        const confirmPassword = document.getElementById("confirm_password").value;
-        const result = document.getElementById("password_match_result");
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirm_password").value;
+      const result = document.getElementById("password_match_result");
 
-        if (password && confirmPassword) {
-            if (password === confirmPassword) {
-                result.innerText = "✅ 비밀번호가 일치합니다.";
-                result.style.color = "green";
-            } else {
-                result.innerText = "❌ 비밀번호가 일치하지 않습니다.";
-                result.style.color = "red";
-            }
+      if (password && confirmPassword) {
+        if (password === confirmPassword) {
+          result.innerText = "✅ 비밀번호가 일치합니다.";
+          result.style.color = "green";
         } else {
-            result.innerText = "";
+          result.innerText = "❌ 비밀번호가 일치하지 않습니다.";
+          result.style.color = "red";
         }
-        checkFormValidity();
+      } else {
+        result.innerText = "";
+      }
+      checkFormValidity();
     }
 
     function checkFormValidity() {
-        const idCheck = document.getElementById("check_result").innerText.includes("사용 가능");
-        const matchCheck = document.getElementById("password_match_result").innerText.includes("일치합니다");
-        const complexityCheck = document.getElementById("password_complexity_result").innerText.includes("충족");
+      const idCheck = document.getElementById("check_result").innerText.includes("사용 가능");
+      const matchCheck = document.getElementById("password_match_result").innerText.includes("일치합니다");
+      const complexityCheck = document.getElementById("password_complexity_result").innerText.includes("충족");
 
-        document.getElementById("submit_btn").disabled = !(idCheck && matchCheck && complexityCheck);
+      document.getElementById("submit_btn").disabled = !(idCheck && matchCheck && complexityCheck);
     }
-</script>
+  </script>
+</body>
+</html>
