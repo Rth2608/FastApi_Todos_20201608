@@ -99,16 +99,27 @@
         const title = titleInput.value.trim();
         const task = taskInput.value.trim();
 
-        if (title && task) {
-          const now = new Date();
-          const timestamp = now.toISOString();
-
-          todos.push({ title, task, timestamp });
-          titleInput.value = "";
-          taskInput.value = "";
-          renderTodos();
-          autoSaveTodos();
+        if (!title && !task) {
+          alert("제목과 할 일을 모두 입력해주세요.");
+          return;
         }
+        if (!title) {
+          alert("제목을 입력해주세요.");
+          return;
+        }
+        if (!task) {
+          alert("할 일을 입력해주세요.");
+          return;
+        }
+
+        const now = new Date();
+        const timestamp = now.toISOString();
+
+        todos.push({ title, task, timestamp });
+        titleInput.value = "";
+        taskInput.value = "";
+        renderTodos();
+        autoSaveTodos();
       }
 
       function deleteTodo(index) {
