@@ -10,6 +10,8 @@ services:
     environment:
       - PYTHONPATH=/app
     command: uvicorn my_todo_app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - loadtest-net
 
   sonarqube:
     image: sonarqube:latest
@@ -23,6 +25,8 @@ services:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - loadtest-net
 
   prometheus:
     image: prom/prometheus:latest
@@ -33,6 +37,8 @@ services:
       - "8990:9090"  # 내부 9090 → 외부 8990
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
+    networks:
+      - loadtest-net
 
   grafana:
     image: grafana/grafana:latest
@@ -43,12 +49,16 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana-data:/var/lib/grafana
+    networks:
+      - loadtest-net
 
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
     ports:
       - "8970:9100"  # 내부 9100 → 외부 8970
+    networks:
+      - loadtest-net
    
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -63,6 +73,34 @@ services:
     command:
       - "--prometheus_endpoint=/metrics"
     restart: unless-stopped
+    networks:
+      - loadtest-net
+  
+  jmeter:
+      build:
+        context: ./jmeter
+        dockerfile: Dockerfile
+      container_name: jmeter
+      volumes:
+        - ./jmeter:/jmeter
+      command:
+        - jmeter
+        - -n
+        - -t
+        - /jmeter/fastapi_test_plan.jmx
+        - -l
+        - /jmeter/results.jtl
+        - -JBASE_URL=http://fastapi-app:5001
+        - -Jjmeter.save.saveservice.output_format=csv
+        - -e
+        - -o
+        - /jmeter/report
+      networks:
+        - loadtest-net
+
+networks:
+  loadtest-net:
+    driver: bridge
 
 volumes:
   sonarqube_conf:
