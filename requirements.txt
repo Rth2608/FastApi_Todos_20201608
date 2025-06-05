@@ -33,3 +33,4 @@ pytest-cov
 beautifulsoup4
 prometheus-fastapi-instrumentator
 prometheus-client
+python-logging-loki==0.3.1
