@@ -50,14 +50,24 @@
       })
       .then(res => res.json())
       .then(data => {
-        todos = data;
+        todos = data.map(todo => ({
+          ...todo,
+          id: todo.id || new Date(todo.timestamp).getTime(),
+          timestamp: new Date(todo.timestamp)
+        }));
         renderTodos();
       });
 
+      function formatDate(dateObj) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${dateObj.getFullYear()}-${pad(dateObj.getMonth()+1)}-${pad(dateObj.getDate())} `
+             + `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+      }
+
       function renderTodos() {
         const sortOption = document.getElementById("sort-select").value;
-
         const sortedTodos = [...todos];
+
         if (sortOption === "latest") {
           sortedTodos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         } else if (sortOption === "oldest") {
@@ -71,21 +81,22 @@
         const list = document.getElementById("todo-list");
         list.innerHTML = "";
 
-        sortedTodos.forEach((todo, index) => {
+        sortedTodos.forEach(todo => {
           const li = document.createElement("li");
+          const timeStr = todo.timestamp ? formatDate(new Date(todo.timestamp)) : "알 수 없음";
 
           if (todo.editing) {
             li.innerHTML = `
-              제목: <input type="text" id="edit-title-${index}" value="${todo.title}" style="margin-right: 10px;">
-              할일: <input type="text" id="edit-task-${index}" value="${todo.task}">
-              <button onclick="saveEdit(${index})">저장</button>
+              제목: <input type="text" id="edit-title-${todo.id}" value="${todo.title}" style="margin-right: 10px;">
+              할일: <input type="text" id="edit-task-${todo.id}" value="${todo.task}">
+              <button onclick="saveEdit(${todo.id})">저장</button>
             `;
           } else {
             li.innerHTML = `
               <strong>${todo.title}</strong>: ${todo.task}
-              <div style="font-size: 0.9em; color: gray;">추가된 시간: ${todo.timestamp || "알 수 없음"}</div>
-              <button onclick="editTodo(${index})">수정</button>
-              <button onclick="deleteTodo(${index})">삭제</button>
+              <div style="font-size: 0.9em; color: gray;">추가된 시간: ${timeStr}</div>
+              <button onclick="editTodo(${todo.id})">수정</button>
+              <button onclick="deleteTodo(${todo.id})">삭제</button>
             `;
           }
 
@@ -113,36 +124,40 @@
         }
 
         const now = new Date();
-        const timestamp = now.toISOString();
+        const id = now.getTime();
 
-        todos.push({ title, task, timestamp });
+        todos.push({ id, title, task, timestamp: now });
         titleInput.value = "";
         taskInput.value = "";
         renderTodos();
         autoSaveTodos();
       }
 
-      function deleteTodo(index) {
-        todos.splice(index, 1);
+      function deleteTodo(id) {
+        todos = todos.filter(t => t.id !== id);
         renderTodos();
         autoSaveTodos();
       }
 
-      function editTodo(index) {
-        todos[index].editing = true;
-        renderTodos();
+      function editTodo(id) {
+        const todo = todos.find(t => t.id === id);
+        if (todo) {
+          todo.editing = true;
+          renderTodos();
+        }
       }
 
-      function saveEdit(index) {
-        const newTitle = document.getElementById(`edit-title-${index}`).value.trim();
-        const newTask = document.getElementById(`edit-task-${index}`).value.trim();
+      function saveEdit(id) {
+        const titleInput = document.getElementById(`edit-title-${id}`);
+        const taskInput = document.getElementById(`edit-task-${id}`);
+        const newTitle = titleInput.value.trim();
+        const newTask = taskInput.value.trim();
 
-        if (newTitle && newTask) {
-          todos[index] = {
-            title: newTitle,
-            task: newTask,
-            timestamp: todos[index].timestamp
-          };
+        const todo = todos.find(t => t.id === id);
+        if (todo && newTitle && newTask) {
+          todo.title = newTitle;
+          todo.task = newTask;
+          delete todo.editing;
           renderTodos();
           autoSaveTodos();
         }
@@ -150,9 +165,10 @@
 
       function autoSaveTodos() {
         const cleaned = todos.map(t => ({
+          id: t.id,
           title: t.title,
           task: t.task,
-          timestamp: t.timestamp
+          timestamp: new Date(t.timestamp).toISOString()
         }));
 
         fetch("/api/todos", {
